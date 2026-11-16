@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Viray Reunion 2027 - Registration & Event Portal</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts & FontAwesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- FIREBASE SDK SCRIPTS -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            sapphire: {
+              50: '#f0f5ff', 100: '#e0ebff', 200: '#c7dafe', 300: '#a4c2fd',
+              400: '#799efb', 500: '#4f75f7', 600: '#2b4ef0', 700: '#1d3ae1',
+              800: '#0f172a', 900: '#0b1338', 950: '#050a24',
+            },
+            amber: { 400: '#fbbf24', 500: '#f59e0b' }
+          },
+          fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+          animation: {
+            'float-slow': 'float 12s ease-in-out infinite',
+            'float-medium': 'float 8s ease-in-out infinite',
+            'pulse-glow': 'pulseGlow 2s ease-in-out infinite'
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px) rotate(0deg)' },
+              '50%': { transform: 'translateY(-20px) rotate(5deg)' },
+            },
+            pulseGlow: {
+              '0%, 100%': { opacity: '0.8', transform: 'scale(1)' },
+              '50%': { opacity: '1', transform: 'scale(1.03)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { background-color: #070d24; color: #f8fafc; overflow-x: hidden; }
+    #bg-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+    .glass-card { background: rgba(255, 255, 255, 0.07); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35); }
+    .glass-input { background: rgba(10, 18, 42, 0.85); border: 1px solid rgba(255, 255, 255, 0.25); color: #ffffff; transition: all 0.3s ease; }
+    .glass-input:focus { background: rgba(10, 18, 42, 0.95); border-color: #60a5fa; box-shadow: 0 0 18px rgba(96, 165, 250, 0.4); outline: none; }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #0b1338; }
+    ::-webkit-scrollbar-thumb { background: #1e3a8a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3b82f6; }
+  </style>
+</head>
+
+<body class="min-h-screen relative font-sans text-slate-100 flex flex-col justify-between">
+
+  <!-- TOAST NOTIFICATION BOX -->
+  <div id="toast-box" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 max-w-sm w-full p-4 rounded-2xl glass-card text-xs flex items-center gap-3 border border-slate-700 shadow-2xl hidden">
+    <div id="toast-icon" class="text-lg"></div>
+    <div id="toast-message" class="text-slate-100 font-medium leading-tight"></div>
+  </div>
+
+  <canvas id="bg-canvas"></canvas>
+  <div class="fixed top-10 left-10 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none animate-float-slow"></div>
+  <div class="fixed bottom-10 right-10 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none animate-float-medium"></div>
+
+  <!-- NAVIGATION HEADER (Hidden in TV Mode) -->
+  <header id="main-header" class="relative z-10 w-full max-w-6xl mx-auto px-4 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-white/10">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-400 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-blue-500/30">
+        <i class="fa-solid font-bold">V</i>
+      </div>
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-200 via-white to-blue-300">
+          Viray Reunion 2027
+        </h1>
+        <p class="text-xs text-blue-200/80 font-medium">Cheers to the family we share and the memories we make!</p>
+      </div>
+    </div>
+
+    <div class="flex bg-slate-950/80 p-1.5 rounded-xl border border-white/15 shadow-inner">
+      <button id="nav-guest" onclick="switchTab('guest')" class="px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 bg-blue-600 text-white shadow-md">
+        <i class="fa-solid font-sm fa-user-pen"></i> Guest Registration
+      </button>
+      <button id="nav-host" onclick="switchTab('host')" class="px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 text-slate-300 hover:text-white">
+        <i class="fa-solid font-sm fa-chart-line"></i> Host Monitoring
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="relative z-10 max-w-6xl w-full mx-auto px-4 py-8 flex-grow">
+
+    <!-- GUEST REGISTRATION SECTION -->
+    <section id="guest-section" class="transition-all duration-500">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <div class="lg:col-span-12">
+          <div class="glass-card rounded-2xl p-6 sm:p-8 relative overflow-hidden">
+            <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-blue-500/10 rounded-full blur-2xl"></div>
+            
+            <div style="font-family: 'Plus Jakarta Sans', Arial, sans-serif; line-height: 1.6; color: #f8fafc;">
+              <h2 class="text-2xl sm:text-3xl font-extrabold mb-3 flex items-center gap-2 text-amber-400">
+                🎉 Let’s Get Together, Viray Family! ❤️
+              </h2>
+
+              <p class="text-slate-100 text-base mb-4 leading-relaxed">
+                We’re excited to celebrate and make more wonderful memories with everyone at our <strong>Viray Grand Family Reunion!</strong>
+              </p>
+
+              <p class="text-slate-200 text-base mb-4 leading-relaxed">
+                If you’re joining us, please take a moment to register below. Every registered member (primary guest and accompanying family) will receive an **individual unique code for the raffle draw**!
+              </p>
+
+              <div class="bg-slate-950/70 border border-white/20 rounded-xl p-4 mb-4 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-blue-100">
+                <div class="flex items-center gap-2.5">
+                  <i class="fa-solid fa-calendar-day text-amber-400 text-xl"></i>
+                  <span><strong>Date:</strong> February 13, 2027 (Saturday)</span>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <i class="fa-solid fa-clock text-amber-400 text-xl"></i>
+                  <span><strong>Time:</strong> 12:00 PM onwards</span>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <i class="fa-solid fa-location-dot text-amber-400 text-xl"></i>
+                  <span><strong>Venue:</strong> Saron Event Hall, Mula De Victoria, Santo Tomas, Pampanga</span>
+                </div>
+              </div>
+
+              <p class="text-slate-100 text-base mb-4 leading-relaxed">
+                Can’t wait to see everyone! The more, the merrier! 🥰❤️
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-12">
+          <div class="glass-card rounded-2xl p-6 sm:p-8">
+            <form id="registration-form" onsubmit="handleRegistration(event)" class="space-y-6">
+              
+              <div class="border-b border-white/10 pb-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-address-card text-blue-400"></i> Primary Guest Details
+                </h3>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label class="block text-lg font-semibold uppercase tracking-wider text-slate-200 mb-2">
+                    Full Name <span class="text-rose-400">*</span>
+                  </label>
+                  <input type="text" id="primaryName" required placeholder="e.g. Benjamin Viray" 
+                         class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none">
+                </div>
+
+                <div>
+                  <label class="block text-lg font-semibold uppercase tracking-wider text-slate-200 mb-2">
+                    Family Lineage / Branch <span class="text-rose-400">*</span>
+                  </label>
+                  <select id="lineage" required class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none text-slate-100 bg-slate-950">
+                    <option value="" disabled selected>-- Select Your Branch --</option>
+                    <option value="Pising Mandap">Pising Mandap</option>
+                    <option value="Itang-Marcial Lagman">Itang-Marcial Lagman</option>
+                    <option value="Aming-Pacing Viray">Aming-Pacing Viray</option>
+                    <option value="Odic Vitug">Odic Vitug</option>
+                    <option value="Zon-Junior Layson">Zon-Junior Layson</option>
+                    <option value="Pining-Jaime Figueroa">Pining-Jaime Figueroa</option>
+                    <option value="Bong-Paz Viray">Bong-Paz Viray</option>
+                    <option value="Fely-Doy Reyes">Fely-Doy Reyes</option>
+                    <option value="Sing-Fe Catacutan">Sing-Fe Catacutan</option>
+                    <option value="Abel-Baby Viray">Abel-Baby Viray</option>
+                    <option value="Marcy-Aleli Viray">Marcy-Aleli Viray</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-lg font-semibold uppercase tracking-wider text-slate-200 mb-2">
+                    Email Address <span class="text-rose-400">*</span>
+                  </label>
+                  <input type="email" id="email" required placeholder="juan@example.com" 
+                         class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none">
+                </div>
+
+                <div>
+                  <label class="block text-lg font-semibold uppercase tracking-wider text-slate-200 mb-2">
+                    Mobile Phone Number <span class="text-rose-400">*</span>
+                  </label>
+                  <input type="tel" id="phone" required placeholder="0912 345 6789" 
+                         class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none">
+                </div>
+
+                <div class="md:col-span-2">
+                  <label class="block text-lg font-semibold uppercase tracking-wider text-slate-200 mb-2">
+                    Complete Address <span class="text-rose-400">*</span>
+                  </label>
+                  <input type="text" id="address" required placeholder="House No., Street, Barangay, City, Province" 
+                         class="w-full glass-input px-4 py-3 rounded-xl text-sm focus:outline-none">
+                </div>
+              </div>
+
+              <div class="pt-4 border-t border-white/10">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 class="text-base font-bold text-white flex items-center gap-2">
+                      <i class="fa-solid fa-users text-blue-400"></i> Accompanying Family Members
+                    </h4>
+                    <p class="text-xs text-slate-300">Each head count is important. Kindly add family members that will surely attend the event.</p>
+                  </div>
+                  <button type="button" onclick="addMemberInput()" class="px-3.5 py-2 bg-blue-600/40 hover:bg-blue-600/60 text-blue-200 border border-blue-400/40 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus"></i> Add Member
+                  </button>
+                </div>
+
+                <div id="accompanying-list" class="space-y-3"></div>
+              </div>
+
+              <div class="pt-4">
+                <button type="submit" id="submit-btn" class="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-base rounded-xl shadow-lg shadow-blue-600/40 hover:shadow-blue-500/60 transition-all duration-300 flex items-center justify-center gap-2">
+                  <i class="fa-solid fa-ticket"></i> Complete Registration
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOST MONITORING SECTION -->
+    <section id="host-section" class="hidden transition-all duration-500">
+      
+      <!-- AUTHENTICATION PIN MODAL -->
+      <div id="pin-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+        <div class="glass-card max-w-md w-full rounded-2xl p-6 text-center shadow-2xl border border-white/20">
+          <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 border border-blue-500/30">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <h3 class="text-xl font-extrabold text-white mb-2">Host Access Security</h3>
+          <p class="text-xs text-slate-300 mb-6">Enter a Host PIN or Master PIN to access host controls.</p>
+          
+          <form onsubmit="verifyPin(event)" class="space-y-4">
+            <input type="password" id="pin-input" placeholder="Enter PIN" maxlength="6"
+                   class="w-full text-center tracking-widest text-xl font-bold py-3 glass-input rounded-xl focus:outline-none">
+            
+            <p id="pin-error" class="text-xs text-rose-400 hidden font-semibold">Incorrect PIN code. Please try again.</p>
+
+            <div class="flex gap-3">
+              <button type="button" onclick="switchTab('guest')" class="w-1/2 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-xs transition">
+                Cancel
+              </button>
+              <button type="submit" class="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-xs transition shadow-lg shadow-blue-600/30">
+                Unlock Dashboard
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- MAIN HOST CONTENT -->
+      <div id="host-content" class="space-y-6">
+        
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 glass-card rounded-2xl p-5">
+          <div>
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-gauge-high text-blue-400"></i> Host Event Control Panel
+              <span id="master-badge" class="hidden px-2 py-0.5 rounded text-[10px] bg-rose-600 text-white font-bold uppercase tracking-wider">Master Access</span>
+            </h2>
+            <p class="text-xs text-slate-300">Live cloud sync connected. Each individual attendee has a unique raffle code.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-3">
+            <button onclick="exportToCSV()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-md">
+              <i class="fa-solid fa-file-excel"></i> Export to Excel / CSV
+            </button>
+
+            <!-- MASTER-ONLY DELETE BUTTON -->
+            <button id="btn-master-clear" onclick="confirmMasterWipe()" class="hidden px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-md">
+              <i class="fa-solid fa-trash-can"></i> Clear All Entries
+            </button>
+
+            <button onclick="lockHostPanel()" class="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/20 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+              <i class="fa-solid fa-lock text-amber-400"></i> Lock Panel
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-card rounded-2xl p-5 border-b-2 border-blue-500">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase text-slate-300">Total Attendees</span>
+              <i class="fa-solid fa-users-viewfinder text-blue-400 text-lg"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="metric-total-guests" class="text-3xl font-extrabold text-white">0</span>
+              <span class="text-xs text-slate-300">individual codes</span>
+            </div>
+            <p id="metric-parties" class="text-xs text-slate-300 mt-1">across 0 registered parties</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-b-2 border-emerald-500">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase text-slate-300">Checked In</span>
+              <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="metric-checkedin" class="text-3xl font-extrabold text-white">0</span>
+              <span class="text-xs text-emerald-400 font-semibold" id="metric-turnout-rate">0%</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1">eligible for raffle draw</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-b-2 border-amber-500">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase text-slate-300">Pending Arrival</span>
+              <i class="fa-solid fa-clock text-amber-400 text-lg"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="metric-pending" class="text-3xl font-extrabold text-white">0</span>
+              <span class="text-xs text-slate-300">attendees</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1">expected to arrive</p>
+          </div>
+
+          <div class="glass-card rounded-2xl p-5 border-b-2 border-indigo-500">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold uppercase text-slate-300">Lineages Represented</span>
+              <i class="fa-solid fa-sitemap text-indigo-400 text-lg"></i>
+            </div>
+            <div class="mt-2 flex items-baseline gap-2">
+              <span id="metric-lineages-count" class="text-3xl font-extrabold text-white">0</span>
+              <span class="text-xs text-slate-300">/ 11 branches</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-1">active family lineages</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-5 glass-card rounded-2xl p-6 flex flex-col justify-between">
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center gap-2 mb-1">
+                <i class="fa-solid fa-bolt text-amber-400"></i> Express Gate Check-in
+              </h3>
+              <p class="text-xs text-slate-300 mb-4">Type an individual's 3-digit raffle code to check them in.</p>
+
+              <form onsubmit="handleExpressCheckin(event)" class="space-y-3">
+                <div class="relative">
+                  <input type="text" id="express-code-input" placeholder="e.g. 104" maxlength="3" required
+                         class="w-full text-center text-3xl tracking-widest font-extrabold py-3 glass-input rounded-xl focus:outline-none uppercase">
+                </div>
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-600/30">
+                  Verify & Mark Checked-In
+                </button>
+              </form>
+            </div>
+            
+            <div id="express-result" class="mt-4 p-3 rounded-xl bg-slate-950/70 border border-white/20 text-xs text-slate-200 hidden"></div>
+          </div>
+
+          <div class="lg:col-span-7 glass-card rounded-2xl p-6">
+            <h3 class="text-base font-bold text-white flex items-center gap-2 mb-4">
+              <i class="fa-solid fa-chart-pie text-blue-400"></i> Family Lineage Breakdown
+            </h3>
+            <div id="lineage-breakdown-list" class="space-y-3 max-h-56 overflow-y-auto pr-2"></div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 space-y-4">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-blue-400"></i> Individual Attendee Directory (Raffle List)
+            </h3>
+            
+            <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <div class="relative flex-grow sm:flex-grow-0">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="search-input" oninput="renderGuestDirectory()" placeholder="Search attendee or code..." 
+                       class="glass-input text-xs pl-8 pr-3 py-2 rounded-xl w-full sm:w-48">
+              </div>
+
+              <select id="lineage-filter" onchange="renderGuestDirectory()" class="glass-input text-xs px-3 py-2 rounded-xl bg-slate-950 text-slate-100">
+                <option value="ALL">All Lineages</option>
+                <option value="Pising Mandap">Pising Mandap</option>
+                <option value="Itang-Marcial Lagman">Itang-Marcial Lagman</option>
+                <option value="Aming-Pacing Viray">Aming-Pacing Viray</option>
+                <option value="Odic Vitug">Odic Vitug</option>
+                <option value="Zon-Junior Layson">Zon-Junior Layson</option>
+                <option value="Pining-Jaime Figueroa">Pining-Jaime Figueroa</option>
+                <option value="Bong-Paz Viray">Bong-Paz Viray</option>
+                <option value="Fely-Doy Reyes">Fely-Doy Reyes</option>
+                <option value="Sing-Fe Catacutan">Sing-Fe Catacutan</option>
+                <option value="Abel-Baby Viray">Abel-Baby Viray</option>
+                <option value="Marcy-Aleli Viray">Marcy-Aleli Viray</option>
+              </select>
+
+              <select id="status-filter" onchange="renderGuestDirectory()" class="glass-input text-xs px-3 py-2 rounded-xl bg-slate-950 text-slate-100">
+                <option value="ALL">All Status</option>
+                <option value="CHECKED_IN">Checked In</option>
+                <option value="PENDING">Pending Arrival</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-950/80 uppercase text-slate-300 border-b border-white/15">
+                <tr>
+                  <th class="py-3 px-4">Raffle Code</th>
+                  <th class="py-3 px-4">Attendee Name</th>
+                  <th class="py-3 px-4">Role / Type</th>
+                  <th class="py-3 px-4">Lineage</th>
+                  <th class="py-3 px-4">Contact</th>
+                  <th class="py-3 px-4 text-center">Status</th>
+                  <th class="py-3 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="directory-tbody" class="divide-y divide-white/10 font-medium"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- PUBLIC LIVE DISPLAY VIEW SECTION (?mode=tv) -->
+    <section id="tv-display-section" class="hidden transition-all duration-500 space-y-6">
+      
+      <!-- TV DISPLAY HEADER BANNER -->
+      <div class="glass-card rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-b-4 border-blue-500 relative overflow-hidden">
+        <div class="absolute -right-16 -top-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
+        <div class="flex items-center gap-5">
+          <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-amber-400 flex items-center justify-center text-white text-3xl font-extrabold shadow-xl shadow-blue-500/30">
+            V
+          </div>
+          <div>
+            <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+              🎉 Viray Grand Family Reunion 2027
+            </h1>
+            <p class="text-sm text-blue-200 mt-1 font-medium">
+              📍 Saron Event Hall, Pampanga &bull; 🕒 February 13, 2027
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 bg-slate-950/80 px-4 py-2.5 rounded-2xl border border-white/15">
+          <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-300">Live Cloud Synced</span>
+        </div>
+      </div>
+
+      <!-- HERO STAT METRICS FOR TV -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card rounded-3xl p-6 border-b-4 border-emerald-400 text-center animate-pulse-glow">
+          <span class="text-xs font-extrabold uppercase tracking-widest text-emerald-300">Total Arrived Guests</span>
+          <div id="tv-metric-arrived" class="text-6xl font-black text-white my-2">0</div>
+          <span id="tv-metric-turnout" class="text-xs font-bold text-slate-300">0% Overall Turnout</span>
+        </div>
+
+        <div class="glass-card rounded-3xl p-6 border-b-4 border-amber-400 text-center">
+          <span class="text-xs font-extrabold uppercase tracking-widest text-amber-300">Active Raffle Passes</span>
+          <div id="tv-metric-raffle-count" class="text-6xl font-black text-amber-400 my-2">0</div>
+          <span class="text-xs font-bold text-slate-300">Eligible for Live Draws</span>
+        </div>
+
+        <div class="glass-card rounded-3xl p-6 border-b-4 border-indigo-400 text-center">
+          <span class="text-xs font-extrabold uppercase tracking-widest text-indigo-300">Active Lineages Present</span>
+          <div id="tv-metric-lineages" class="text-6xl font-black text-white my-2">0 / 11</div>
+          <span class="text-xs font-bold text-slate-300">Family Branches Onsite</span>
+        </div>
+      </div>
+
+      <!-- TV SPLIT GRID: LIVE WELCOME STREAM & LINEAGE LEADERBOARD -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- LIVE ARRIVAL FEED -->
+        <div class="lg:col-span-6 glass-card rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+                <i class="fa-solid fa-bell text-amber-400"></i> Live Arrival Stream
+              </h2>
+              <span class="text-xs text-slate-400">Real-time Arrivals</span>
+            </div>
+
+            <div id="tv-welcome-feed" class="space-y-3.5 max-h-[400px] overflow-y-auto pr-2">
+              <!-- Live welcome entry cards render dynamically here -->
+            </div>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-white/10 text-center text-xs text-slate-400">
+            <i class="fa-solid fa-ticket text-amber-400 mr-1.5"></i> Keep your digital ticket pass & raffle code ready at check-in!
+          </div>
+        </div>
+
+        <!-- LINEAGE PROGRESS LEADERBOARD -->
+        <div class="lg:col-span-6 glass-card rounded-3xl p-6 sm:p-8">
+          <div class="border-b border-white/10 pb-4 mb-4">
+            <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+              <i class="fa-solid fa-ranking-star text-blue-400"></i> Family Lineage Turnout
+            </h2>
+          </div>
+
+          <div id="tv-lineage-list" class="space-y-3.5 max-h-[420px] overflow-y-auto pr-2">
+            <!-- Dynamic lineage progress bars render here -->
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- SUCCESS TICKET MODAL -->
+  <div id="ticket-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4 hidden overflow-y-auto">
+    <div class="glass-card max-w-lg w-full rounded-3xl p-6 sm:p-8 text-center relative border border-blue-400/40 shadow-2xl my-8">
+      <button onclick="closeTicketModal()" class="absolute top-4 right-4 text-slate-300 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 border border-emerald-500/30">
+        <i class="fa-solid fa-ticket text-amber-400"></i>
+      </div>
+
+      <h3 class="text-2xl font-extrabold text-white">Registration Successful!</h3>
+      <p class="text-xs text-slate-200 mt-1">Please screenshot your individual raffle passes below.</p>
+
+      <div id="ticket-cards-container" class="mt-6 space-y-4 max-h-96 overflow-y-auto pr-1">
+        <!-- Dynamic individual ticket passes render here -->
+      </div>
+
+      <button onclick="closeTicketModal()" class="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm rounded-xl shadow-lg transition">
+        Done / Close
+      </button>
+    </div>
+  </div>
+
+  <!-- MASTER WIPE CONFIRMATION MODAL -->
+  <div id="master-wipe-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4 hidden">
+    <div class="glass-card max-w-sm w-full rounded-2xl p-6 text-center border border-rose-500/40 shadow-2xl">
+      <div class="w-14 h-14 bg-rose-600/20 text-rose-400 rounded-full flex items-center justify-center text-2xl mx-auto mb-3 border border-rose-500/30">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+      <h3 class="text-lg font-bold text-white mb-1">Clear Entire Database?</h3>
+      <p class="text-xs text-rose-300 mb-4">Warning: This action will permanently delete all guest registrations and raffle codes. Re-enter Master PIN to confirm.</p>
+      
+      <form onsubmit="executeMasterWipe(event)" class="space-y-4">
+        <input type="password" id="master-confirm-pin" placeholder="Enter Master PIN" maxlength="6" required
+               class="w-full text-center tracking-widest text-lg font-bold py-2.5 glass-input rounded-xl focus:outline-none border-rose-500/50">
+        
+        <div class="flex gap-2">
+          <button type="button" onclick="closeMasterWipeModal()" class="w-1/2 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">
+            Cancel
+          </button>
+          <button type="submit" class="w-1/2 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-md">
+            Wipe Database
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="relative z-10 w-full max-w-6xl mx-auto px-4 py-6 border-t border-white/10 text-center text-xs text-slate-300">
+    <p>Viray Grand Family Reunion 2027 &bull; Saron Event Hall, Santo Tomas, Pampanga</p>
+  </footer>
+
+  <!-- SCRIPT LOGIC (FIREBASE REALTIME, MULTI-PIN AUTH & MASTER DELETE) -->
+  <script>
+    // 1. Paste your exact Firebase Realtime Database URL here:
+    const firebaseConfig = {
+      databaseURL: "https://virayfamilyreunion-default-rtdb.asia-southeast1.firebasedatabase.app/"
+    };
+
+    // AUTHORIZED HOST PINS (Supports multiple pins)
+    const VALID_HOST_PINS = ["021327", "062089", "456789"]; 
+    
+    // MASTER PIN (Has special privileges to wipe all entries)
+    const MASTER_PIN = "619619"; 
+
+    let db = null;
+    let registeredParties = [];
+    let isHostAuthenticated = false;
+    let isMasterAuthenticated = false;
+
+    const LINEAGES = [
+      "Pising Mandap", "Itang-Marcial Lagman", "Aming-Pacing Viray", "Odic Vitug",
+      "Zon-Junior Layson", "Pining-Jaime Figueroa", "Bong-Paz Viray", "Fely-Doy Reyes",
+      "Sing-Fe Catacutan", "Abel-Baby Viray", "Marcy-Aleli Viray"
+    ];
+
+    function showToast(message, type = 'info') {
+      const box = document.getElementById('toast-box');
+      const icon = document.getElementById('toast-icon');
+      const msg = document.getElementById('toast-message');
+
+      msg.innerText = message;
+      if (type === 'error') {
+        icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>';
+      } else if (type === 'success') {
+        icon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+      } else {
+        icon.innerHTML = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+      }
+
+      box.classList.remove('hidden', 'translate-x-full');
+      setTimeout(() => {
+        box.classList.add('translate-x-full');
+        setTimeout(() => box.classList.add('hidden'), 300);
+      }, 4000);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initBackgroundCanvas();
+      addMemberInput();
+
+      // Detect if URL parameter mode=tv or mode=display is passed
+      const urlParams = new URLSearchParams(window.location.search);
+      const isTVMode = urlParams.get('mode') === 'tv' || urlParams.get('mode') === 'display';
+
+      if (isTVMode) {
+        enablePublicTVMode();
+      }
+
+      try {
+        if (firebaseConfig.databaseURL && !firebaseConfig.databaseURL.includes("YOUR_DATABASE_NAME")) {
+          firebase.initializeApp(firebaseConfig);
+          db = firebase.database();
+          listenToCloudDatabase();
+        } else {
+          showToast("Please update the databaseURL in your index.html script.", "error");
+        }
+      } catch (err) {
+        console.error("Firebase Init Error:", err);
+        showToast("Firebase initialization failed. Check your Database URL.", "error");
+      }
+    });
+
+    function enablePublicTVMode() {
+      document.getElementById('main-header').classList.add('hidden');
+      document.getElementById('guest-section').classList.add('hidden');
+      document.getElementById('host-section').classList.add('hidden');
+      document.getElementById('tv-display-section').classList.remove('hidden');
+    }
+
+    function listenToCloudDatabase() {
+      if (!db) return;
+      db.ref('registrations').on('value', (snapshot) => {
+        const data = snapshot.val();
+        registeredParties = data ? Object.values(data) : [];
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const isTVMode = urlParams.get('mode') === 'tv' || urlParams.get('mode') === 'display';
+
+        if (isTVMode) {
+          refreshTVDisplayView();
+        } else if (isHostAuthenticated) {
+          refreshHostDashboard();
+        }
+      }, (err) => {
+        console.error("Database Listener Error:", err);
+        if (err.code === 'PERMISSION_DENIED') {
+          showToast("Firebase Rules error: Set .read and .write to true in Firebase Rules.", "error");
+        }
+      });
+    }
+
+    function switchTab(tab) {
+      const guestSec = document.getElementById('guest-section');
+      const hostSec = document.getElementById('host-section');
+      const btnGuest = document.getElementById('nav-guest');
+      const btnHost = document.getElementById('nav-host');
+
+      if (tab === 'guest') {
+        guestSec.classList.remove('hidden');
+        hostSec.classList.add('hidden');
+        btnGuest.className = "px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 bg-blue-600 text-white shadow-md";
+        btnHost.className = "px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 text-slate-300 hover:text-white";
+      } else {
+        guestSec.classList.add('hidden');
+        hostSec.classList.remove('hidden');
+        btnHost.className = "px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 bg-blue-600 text-white shadow-md";
+        btnGuest.className = "px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 text-slate-300 hover:text-white";
+        
+        if (!isHostAuthenticated) {
+          document.getElementById('pin-modal').classList.remove('hidden');
+        } else {
+          refreshHostDashboard();
+        }
+      }
+    }
+
+    function verifyPin(e) {
+      e.preventDefault();
+      const input = document.getElementById('pin-input').value.trim();
+      const errorMsg = document.getElementById('pin-error');
+      
+      if (input === MASTER_PIN) {
+        isHostAuthenticated = true;
+        isMasterAuthenticated = true;
+        document.getElementById('pin-modal').classList.add('hidden');
+        document.getElementById('pin-input').value = '';
+        errorMsg.classList.add('hidden');
+        
+        document.getElementById('btn-master-clear').classList.remove('hidden');
+        document.getElementById('master-badge').classList.remove('hidden');
+        
+        showToast("Unlocked as Master Admin", "success");
+        refreshHostDashboard();
+
+      } else if (VALID_HOST_PINS.includes(input)) {
+        isHostAuthenticated = true;
+        isMasterAuthenticated = false;
+        document.getElementById('pin-modal').classList.add('hidden');
+        document.getElementById('pin-input').value = '';
+        errorMsg.classList.add('hidden');
+        
+        document.getElementById('btn-master-clear').classList.add('hidden');
+        document.getElementById('master-badge').classList.add('hidden');
+
+        showToast("Host Dashboard Unlocked", "success");
+        refreshHostDashboard();
+
+      } else {
+        errorMsg.classList.remove('hidden');
+      }
+    }
+
+    function lockHostPanel() {
+      isHostAuthenticated = false;
+      isMasterAuthenticated = false;
+      document.getElementById('btn-master-clear').classList.add('hidden');
+      document.getElementById('master-badge').classList.add('hidden');
+      document.getElementById('pin-modal').classList.remove('hidden');
+    }
+
+    // MASTER CLEAR ALL LOGIC
+    function confirmMasterWipe() {
+      if (!isMasterAuthenticated) {
+        showToast("Master authorization required.", "error");
+        return;
+      }
+      document.getElementById('master-wipe-modal').classList.remove('hidden');
+    }
+
+    function closeMasterWipeModal() {
+      document.getElementById('master-wipe-modal').classList.add('hidden');
+      document.getElementById('master-confirm-pin').value = '';
+    }
+
+    async function executeMasterWipe(e) {
+      e.preventDefault();
+      const confirmPin = document.getElementById('master-confirm-pin').value.trim();
+
+      if (confirmPin !== MASTER_PIN) {
+        showToast("Invalid Master PIN. Database wipe cancelled.", "error");
+        closeMasterWipeModal();
+        return;
+      }
+
+      if (!db) return;
+
+      try {
+        await db.ref('registrations').remove();
+        showToast("Database successfully cleared of all registrations!", "success");
+        closeMasterWipeModal();
+      } catch (err) {
+        console.error("Wipe error:", err);
+        showToast("Failed to clear database: " + err.message, "error");
+      }
+    }
+
+    function addMemberInput() {
+      const container = document.getElementById('accompanying-list');
+      const index = container.children.length + 1;
+      
+      const row = document.createElement('div');
+      row.className = "flex items-center gap-2 member-item-row";
+      row.innerHTML = `
+        <input type="text" placeholder="Member Name #${index}" class="glass-input flex-grow px-3.5 py-2.5 rounded-xl text-xs focus:outline-none member-name">
+        <input type="number" placeholder="Age" min="0" max="120" class="glass-input w-20 px-3.5 py-2.5 rounded-xl text-xs focus:outline-none member-age">
+        <button type="button" onclick="removeMemberInput(this)" class="p-2.5 bg-rose-500/20 hover:bg-rose-500/40 text-rose-300 border border-rose-500/30 rounded-xl text-xs transition">
+          <i class="fa-solid fa-trash-can"></i>
+        </button>
+      `;
+      container.appendChild(row);
+    }
+
+    function removeMemberInput(btn) {
+      const container = document.getElementById('accompanying-list');
+      if (container.children.length > 1) {
+        btn.closest('.member-item-row').remove();
+      }
+    }
+
+    function getAllAttendees() {
+      const list = [];
+      registeredParties.forEach(party => {
+        list.push({
+          code: party.id,
+          name: party.primaryName,
+          type: 'Primary Guest',
+          lineage: party.lineage,
+          email: party.email,
+          phone: party.phone,
+          address: party.address,
+          checkedIn: party.checkedIn,
+          partyId: party.id,
+          isPrimary: true
+        });
+
+        if (party.accompanyingMembers) {
+          party.accompanyingMembers.forEach((m, idx) => {
+            list.push({
+              code: m.code || `${party.id}-${idx+1}`,
+              name: m.name + (m.age ? ` (${m.age} yrs)` : ''),
+              type: `Member (Party ${party.primaryName})`,
+              lineage: party.lineage,
+              email: party.email,
+              phone: party.phone,
+              address: party.address,
+              checkedIn: m.checkedIn || false,
+              partyId: party.id,
+              memberIndex: idx,
+              isPrimary: false
+            });
+          });
+        }
+      });
+      return list;
+    }
+
+    function generateUnique3DigitCode(usedSet) {
+      let code;
+      do {
+        code = Math.floor(100 + Math.random() * 900).toString();
+      } while (usedSet.has(code) && usedSet.size < 900);
+      usedSet.add(code);
+      return code;
+    }
+
+    async function handleRegistration(e) {
+      e.preventDefault();
+
+      if (!db) {
+        showToast("Database connection not ready. Check databaseURL.", "error");
+        return;
+      }
+
+      const primaryName = document.getElementById('primaryName').value.trim();
+      const lineage = document.getElementById('lineage').value;
+      const email = document.getElementById('email').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+
+      const allAttendees = getAllAttendees();
+      const usedCodes = new Set(allAttendees.map(a => a.code));
+
+      const primaryCode = generateUnique3DigitCode(usedCodes);
+
+      const memberRows = document.querySelectorAll('.member-item-row');
+      const accompanyingMembers = [];
+      memberRows.forEach(row => {
+        const name = row.querySelector('.member-name').value.trim();
+        const age = row.querySelector('.member-age').value.trim();
+        if (name) {
+          const mCode = generateUnique3DigitCode(usedCodes);
+          accompanyingMembers.push({ 
+            name, 
+            age: age || 'N/A',
+            code: mCode,
+            checkedIn: false
+          });
+        }
+      });
+
+      const partyData = {
+        id: primaryCode,
+        primaryName,
+        lineage,
+        email,
+        phone,
+        address,
+        accompanyingMembers,
+        checkedIn: false,
+        checkInTime: null,
+        createdAt: new Date().toLocaleString()
+      };
+
+      try {
+        await db.ref('registrations/' + primaryCode).set(partyData);
+
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+        }
+        
+        displayTicketModal(partyData);
+
+        document.getElementById('registration-form').reset();
+        document.getElementById('accompanying-list').innerHTML = '';
+        addMemberInput();
+
+      } catch (error) {
+        console.error("Submission Error:", error);
+        if (error.code === 'PERMISSION_DENIED') {
+          showToast("Firebase Rules blocked submission. Set .read and .write to true.", "error");
+        } else {
+          showToast("Submission failed: " + error.message, "error");
+        }
+      }
+    }
+
+    function displayTicketModal(party) {
+      const container = document.getElementById('ticket-cards-container');
+      container.innerHTML = '';
+
+      const primaryCard = document.createElement('div');
+      primaryCard.className = "bg-gradient-to-br from-blue-950/95 to-indigo-950/95 border border-blue-400/40 rounded-2xl p-5 text-left relative overflow-hidden shadow-inner mb-3";
+      primaryCard.innerHTML = `
+        <div class="flex items-center justify-between border-b border-blue-700/50 pb-2 mb-2">
+          <div>
+            <p class="text-[9px] uppercase font-bold text-blue-300 tracking-wider">Primary Guest Pass</p>
+            <h4 class="text-sm font-bold text-white">${party.primaryName}</h4>
+          </div>
+          <div class="bg-blue-600/30 px-2.5 py-1 rounded-lg border border-blue-400/30">
+            <span class="text-[10px] font-bold text-blue-200">${party.lineage}</span>
+          </div>
+        </div>
+        <div class="my-2 text-center">
+          <p class="text-[10px] uppercase font-semibold text-slate-300 tracking-widest">Raffle & Pass Code</p>
+          <div class="text-4xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-amber-200 py-1">
+            ${party.id}
+          </div>
+        </div>
+      `;
+      container.appendChild(primaryCard);
+
+      if (party.accompanyingMembers && party.accompanyingMembers.length > 0) {
+        party.accompanyingMembers.forEach(m => {
+          const mCard = document.createElement('div');
+          mCard.className = "bg-gradient-to-br from-slate-900/95 to-blue-950/90 border border-slate-700 rounded-2xl p-5 text-left relative overflow-hidden shadow-inner mb-3";
+          mCard.innerHTML = `
+            <div class="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-2">
+              <div>
+                <p class="text-[9px] uppercase font-bold text-indigo-300 tracking-wider">Accompanying Member Pass</p>
+                <h4 class="text-sm font-bold text-white">${m.name} ${m.age ? `(Age: ${m.age})` : ''}</h4>
+              </div>
+              <div class="bg-indigo-600/30 px-2.5 py-1 rounded-lg border border-indigo-400/30">
+                <span class="text-[10px] font-bold text-indigo-200">${party.lineage}</span>
+              </div>
+            </div>
+            <div class="my-2 text-center">
+              <p class="text-[10px] uppercase font-semibold text-slate-300 tracking-widest">Individual Raffle Code</p>
+              <div class="text-4xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-amber-200 py-1">
+                ${m.code}
+              </div>
+            </div>
+          `;
+          container.appendChild(mCard);
+        });
+      }
+
+      document.getElementById('ticket-modal').classList.remove('hidden');
+    }
+
+    function closeTicketModal() {
+      document.getElementById('ticket-modal').classList.add('hidden');
+    }
+
+    function refreshHostDashboard() {
+      const allAttendees = getAllAttendees();
+      const totalAttendees = allAttendees.length;
+      const checkedInAttendees = allAttendees.filter(a => a.checkedIn).length;
+
+      const lineageCounts = {};
+      LINEAGES.forEach(l => lineageCounts[l] = { total: 0, checkedIn: 0 });
+
+      allAttendees.forEach(a => {
+        if (lineageCounts[a.lineage]) {
+          lineageCounts[a.lineage].total += 1;
+          if (a.checkedIn) lineageCounts[a.lineage].checkedIn += 1;
+        }
+      });
+
+      document.getElementById('metric-total-guests').innerText = totalAttendees;
+      document.getElementById('metric-parties').innerText = `across ${registeredParties.length} registered parties`;
+      document.getElementById('metric-checkedin').innerText = checkedInAttendees;
+      
+      const turnoutRate = totalAttendees > 0 ? Math.round((checkedInAttendees / totalAttendees) * 100) : 0;
+      document.getElementById('metric-turnout-rate').innerText = `${turnoutRate}% Turnout`;
+
+      const pendingCount = totalAttendees - checkedInAttendees;
+      document.getElementById('metric-pending').innerText = pendingCount;
+
+      const activeLineages = Object.values(lineageCounts).filter(l => l.total > 0).length;
+      document.getElementById('metric-lineages-count').innerText = activeLineages;
+
+      renderLineageBreakdown(lineageCounts, totalAttendees);
+      renderGuestDirectory();
+    }
+
+  // TV DISPLAY REFRESH LOGIC
+    function refreshTVDisplayView() {
+      const allAttendees = getAllAttendees();
+      const totalAttendees = allAttendees.length;
+      const checkedInAttendees = allAttendees.filter(a => a.checkedIn);
+
+      // Hero Metrics
+      document.getElementById('tv-metric-arrived').innerText = checkedInAttendees.length;
+      document.getElementById('tv-metric-raffle-count').innerText = checkedInAttendees.length;
+      
+      const turnoutRate = totalAttendees > 0 ? Math.round((checkedInAttendees.length / totalAttendees) * 100) : 0;
+      document.getElementById('tv-metric-turnout').innerText = `${turnoutRate}% Overall Turnout (${totalAttendees} Registered)`;
+
+      const lineageCounts = {};
+      LINEAGES.forEach(l => lineageCounts[l] = { total: 0, checkedIn: 0 });
+
+      allAttendees.forEach(a => {
+        if (lineageCounts[a.lineage]) {
+          lineageCounts[a.lineage].total += 1;
+          if (a.checkedIn) lineageCounts[a.lineage].checkedIn += 1;
+        }
+      });
+
+      const activeLineages = Object.values(lineageCounts).filter(l => l.checkedIn > 0).length;
+      document.getElementById('tv-metric-lineages').innerText = `${activeLineages} / 11`;
+
+      // Render TV Live Arrival Feed
+      const feedContainer = document.getElementById('tv-welcome-feed');
+      feedContainer.innerHTML = '';
+
+      if (checkedInAttendees.length === 0) {
+        feedContainer.innerHTML = `
+          <div class="text-center py-12 text-slate-400 text-sm">
+            <i class="fa-solid fa-clock text-2xl mb-2 text-slate-500"></i>
+            <p>Welcome! Gate check-ins will appear live on screen as guests arrive.</p>
+          </div>
+        `;
+      } else {
+        // Show last 10 checked-in guests
+        const recentArrivals = [...checkedInAttendees].reverse().slice(0, 10);
+        recentArrivals.forEach(item => {
+          const card = document.createElement('div');
+          card.className = "bg-gradient-to-r from-slate-900/90 to-blue-950/80 border border-blue-500/30 rounded-2xl p-4 flex items-center justify-between shadow-lg transform transition duration-300";
+          card.innerHTML = `
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                🎉
+              </div>
+              <div>
+                <h4 class="text-base font-extrabold text-white">${item.name}</h4>
+                <p class="text-xs text-blue-300">${item.lineage} Branch</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Raffle Pass</span>
+              <div class="text-2xl font-black text-amber-400">${item.code}</div>
+            </div>
+          `;
+          feedContainer.appendChild(card);
+        });
+      }
+
+      // Render TV Lineage Turnout Progress Bars
+      const tvLineageContainer = document.getElementById('tv-lineage-list');
+      tvLineageContainer.innerHTML = '';
+
+      LINEAGES.forEach(lineage => {
+        const data = lineageCounts[lineage];
+        const percent = data.total > 0 ? Math.round((data.checkedIn / data.total) * 100) : 0;
+
+        const row = document.createElement('div');
+        row.className = "space-y-1.5";
+        row.innerHTML = `
+          <div class="flex items-center justify-between text-xs sm:text-sm">
+            <span class="font-bold text-slate-100">${lineage}</span>
+            <span class="text-blue-300 font-semibold">${data.checkedIn} / ${data.total} Arrived (${percent}%)</span>
+          </div>
+          <div class="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-white/10">
+            <div class="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-amber-400 rounded-full transition-all duration-700" style="width: ${percent}%"></div>
+          </div>
+        `;
+        tvLineageContainer.appendChild(row);
+      });
+    }      
+
+    function renderLineageBreakdown(lineageCounts, grandTotal) {
+      const container = document.getElementById('lineage-breakdown-list');
+      container.innerHTML = '';
+
+      LINEAGES.forEach(lineage => {
+        const data = lineageCounts[lineage];
+        const percent = grandTotal > 0 ? Math.round((data.total / grandTotal) * 100) : 0;
+
+        const item = document.createElement('div');
+        item.className = "space-y-1";
+        item.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-slate-100">${lineage}</span>
+            <span class="text-slate-300">${data.checkedIn} / ${data.total} attendees (${percent}%)</span>
+          </div>
+          <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-white/10">
+            <div class="h-full bg-gradient-to-r from-blue-500 to-indigo-400 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function renderGuestDirectory() {
+      const tbody = document.getElementById('directory-tbody');
+      tbody.innerHTML = '';
+
+      const query = document.getElementById('search-input').value.toLowerCase().trim();
+      const lineageFilter = document.getElementById('lineage-filter').value;
+      const statusFilter = document.getElementById('status-filter').value;
+
+      const allAttendees = getAllAttendees();
+
+      const filtered = allAttendees.filter(a => {
+        const matchesQuery = (a.code && a.code.toLowerCase().includes(query)) || 
+                             (a.name && a.name.toLowerCase().includes(query)) || 
+                             (a.email && a.email.toLowerCase().includes(query)) ||
+                             (a.phone && a.phone.includes(query));
+        const matchesLineage = lineageFilter === 'ALL' || a.lineage === lineageFilter;
+        const matchesStatus = statusFilter === 'ALL' || 
+                             (statusFilter === 'CHECKED_IN' && a.checkedIn) || 
+                             (statusFilter === 'PENDING' && !a.checkedIn);
+
+        return matchesQuery && matchesLineage && matchesStatus;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-8 text-center text-slate-300 text-xs">
+              No registration records match your filter criteria.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      filtered.forEach(attendee => {
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-slate-800/40 transition-colors";
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-mono font-bold text-amber-400 text-sm">${attendee.code}</td>
+          <td class="py-3 px-4">
+            <div class="font-bold text-white">${attendee.name}</div>
+            <div class="text-[10px] text-slate-300">${attendee.address || ''}</div>
+          </td>
+          <td class="py-3 px-4">
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${attendee.isPrimary ? 'bg-blue-600/30 text-blue-300 border border-blue-500/30' : 'bg-slate-800 text-slate-300 border border-slate-700'}">
+              ${attendee.type}
+            </span>
+          </td>
+          <td class="py-3 px-4 text-slate-200">${attendee.lineage}</td>
+          <td class="py-3 px-4 text-slate-300">
+            <div>${attendee.phone}</div>
+            <div class="text-[10px] text-slate-400">${attendee.email}</div>
+          </td>
+          <td class="py-3 px-4 text-center">
+            ${attendee.checkedIn 
+              ? `<span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full font-bold text-[10px]">Checked In</span>`
+              : `<span class="px-2.5 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full font-bold text-[10px]">Pending</span>`
+            }
+          </td>
+          <td class="py-3 px-4 text-right">
+            <button onclick="toggleIndividualCheckin('${attendee.partyId}', ${attendee.isPrimary}, ${attendee.memberIndex})" class="px-3 py-1.5 rounded-lg text-[11px] font-semibold transition ${
+              attendee.checkedIn 
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-white/10' 
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md'
+            }">
+              ${attendee.checkedIn ? 'Undo Check-in' : 'Mark Arrival'}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function toggleIndividualCheckin(partyId, isPrimary, memberIndex) {
+      if (!db) return;
+      const party = registeredParties.find(p => p.id === partyId);
+      if (!party) return;
+
+      if (isPrimary) {
+        const newStatus = !party.checkedIn;
+        db.ref(`registrations/${partyId}`).update({
+          checkedIn: newStatus,
+          checkInTime: newStatus ? new Date().toLocaleString() : null
+        });
+      } else {
+        const members = party.accompanyingMembers || [];
+        if (members[memberIndex]) {
+          members[memberIndex].checkedIn = !members[memberIndex].checkedIn;
+          db.ref(`registrations/${partyId}/accompanyingMembers`).set(members);
+        }
+      }
+    }
+
+    function handleExpressCheckin(e) {
+      e.preventDefault();
+      const codeInput = document.getElementById('express-code-input').value.trim();
+      const resultBox = document.getElementById('express-result');
+      
+      const allAttendees = getAllAttendees();
+      const target = allAttendees.find(a => a.code === codeInput);
+
+      resultBox.classList.remove('hidden');
+
+      if (!target) {
+        resultBox.className = "mt-4 p-3 rounded-xl bg-rose-950/70 border border-rose-800/80 text-xs text-rose-300";
+        resultBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1.5"></i> No attendee found matching raffle code <strong>${codeInput}</strong>.`;
+      } else if (target.checkedIn) {
+        resultBox.className = "mt-4 p-3 rounded-xl bg-amber-950/70 border border-amber-800/80 text-xs text-amber-300";
+        resultBox.innerHTML = `<i class="fa-solid fa-circle-info mr-1.5"></i> Attendee <strong>${target.name}</strong> (Code: ${target.code}) is already checked in.`;
+      } else {
+        toggleIndividualCheckin(target.partyId, target.isPrimary, target.memberIndex);
+        
+        resultBox.className = "mt-4 p-3 rounded-xl bg-emerald-950/70 border border-emerald-800/80 text-xs text-emerald-300";
+        resultBox.innerHTML = `<i class="fa-solid fa-circle-check mr-1.5"></i> Successfully checked in <strong>${target.name}</strong> (Raffle Code: ${target.code})!`;
+        
+        if (typeof confetti === 'function') {
+          confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+        }
+      }
+
+      document.getElementById('express-code-input').value = '';
+    }
+
+    function exportToCSV() {
+      const allAttendees = getAllAttendees();
+      
+      if (allAttendees.length === 0) {
+        showToast("No registration entries available to export.", "error");
+        return;
+      }
+
+      const headers = ["Raffle Code", "Attendee Name", "Role/Type", "Lineage", "Email", "Phone", "Address", "Checked-In Status"];
+      
+      const rows = allAttendees.map(a => [
+        `"${a.code}"`,
+        `"${a.name.replace(/"/g, '""')}"`,
+        `"${a.type}"`,
+        `"${a.lineage}"`,
+        `"${a.email}"`,
+        `"${a.phone}"`,
+        `"${a.address ? a.address.replace(/"/g, '""') : ''}"`,
+        `"${a.checkedIn ? 'Checked In' : 'Pending'}"`
+      ]);
+
+      const csvContent = "data:text/csv;charset=utf-8," 
+        + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Viray_Reunion_2027_Attendees_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showToast("Spreadsheet downloaded successfully!", "success");
+    }
+
+    function initBackgroundCanvas() {
+      const canvas = document.getElementById('bg-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      let width = (canvas.width = window.innerWidth);
+      let height = (canvas.height = window.innerHeight);
+
+      window.addEventListener('resize', () => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      });
+
+      const particles = [];
+      const particleCount = 45;
+
+      for (let i = 0; i < particleCount; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: (Math.random() - 0.5) * 0.4,
+          radius: Math.random() * 2 + 1,
+          alpha: Math.random() * 0.5 + 0.2
+        });
+      }
+
+      function animate() {
+        ctx.clearRect(0, 0, width, height);
+
+        for (let i = 0; i < particleCount; i++) {
+          for (let j = i + 1; j < particleCount; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < 130) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.strokeStyle = `rgba(59, 130, 246, ${0.15 * (1 - dist / 130)})`;
+              ctx.lineWidth = 0.8;
+              ctx.stroke();
+            }
+          }
+        }
+
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+
+          if (p.x < 0) p.x = width;
+          if (p.x > width) p.x = 0;
+          if (p.y < 0) p.y = height;
+          if (p.y > height) p.y = 0;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(96, 165, 250, ${p.alpha})`;
+          ctx.fill();
+        });
+
+        requestAnimationFrame(animate);
+      }
+
+      animate();
+    }
+  </script>
+</body>
+</html>
